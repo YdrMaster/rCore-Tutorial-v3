@@ -9,6 +9,8 @@ mod console;
 mod lang_items;
 mod sbi;
 
+mod logger;
+
 global_asm!(include_str!("entry.asm"));
 
 fn clear_bss() {
@@ -34,14 +36,24 @@ pub fn rust_main() -> ! {
         fn boot_stack_top();
     }
     clear_bss();
-    println!("Hello, world!");
-    println!(".text [{:#x}, {:#x})", stext as usize, etext as usize);
-    println!(".rodata [{:#x}, {:#x})", srodata as usize, erodata as usize);
-    println!(".data [{:#x}, {:#x})", sdata as usize, edata as usize);
-    println!(
+
+    use log::{info, LevelFilter::*};
+    logger::init(match option_env!("LOG") {
+        Some("ERROR") => Error,
+        Some("WARN") => Warn,
+        Some("INFO") => Info,
+        Some("DEBUG") => Debug,
+        Some("TRACE") => Trace,
+        _ => Off,
+    });
+    info!("Hello, world!");
+    info!(".text [{:#x}, {:#x})", stext as usize, etext as usize);
+    info!(".rodata [{:#x}, {:#x})", srodata as usize, erodata as usize);
+    info!(".data [{:#x}, {:#x})", sdata as usize, edata as usize);
+    info!(
         "boot_stack [{:#x}, {:#x})",
         boot_stack as usize, boot_stack_top as usize
     );
-    println!(".bss [{:#x}, {:#x})", sbss as usize, ebss as usize);
+    info!(".bss [{:#x}, {:#x})", sbss as usize, ebss as usize);
     panic!("Shutdown machine!");
 }
