@@ -81,7 +81,17 @@ pub fn sys_read(fd: usize, buffer: &mut [u8]) -> isize {
 }
 
 pub fn sys_write(fd: usize, buffer: &[u8]) -> isize {
-    syscall(SYSCALL_WRITE, [fd, buffer.as_ptr() as usize, buffer.len()])
+    extern "C" {
+        fn BASE_ADDRESS();
+        fn end_bss();
+    }
+    if BASE_ADDRESS as usize <= buffer.as_ptr() as usize
+        && buffer.as_ptr() as usize + buffer.len() <= end_bss as usize
+    {
+        syscall(SYSCALL_WRITE, [fd, buffer.as_ptr() as usize, buffer.len()])
+    } else {
+        -1
+    }
 }
 
 pub fn sys_linkat(
