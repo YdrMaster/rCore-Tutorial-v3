@@ -1,6 +1,5 @@
 #![no_std]
 #![no_main]
-#![feature(asm)]
 
 #[macro_use]
 extern crate user_lib;
@@ -15,7 +14,7 @@ const STACK_SIZE: usize = 0x1000;
 
 unsafe fn r_sp() -> usize {
     let mut sp: usize;
-    asm!("mv {}, sp", out(reg) sp);
+    core::arch::asm!("mv {}, sp", out(reg) sp);
     sp
 }
 

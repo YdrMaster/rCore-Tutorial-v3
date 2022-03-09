@@ -1,6 +1,5 @@
 #![no_std]
 #![no_main]
-#![feature(asm)]
 
 extern crate user_lib;
 
@@ -10,7 +9,7 @@ extern crate user_lib;
 #[no_mangle]
 pub fn main() -> ! {
     unsafe {
-        asm!("sret");
+        core::arch::asm!("sret");
     }
     panic!("FAIL: T.T\n");
 }
