@@ -1,12 +1,14 @@
 #![no_std]
 #![no_main]
 #![feature(panic_info_message)]
+#![feature(maybe_uninit_uninit_array)]
 
 #[macro_use]
 mod console;
 mod config;
 mod lang_items;
 mod loader;
+mod priority_queue;
 mod sbi;
 mod sync;
 mod syscall;
