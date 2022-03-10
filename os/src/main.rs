@@ -8,7 +8,6 @@ mod console;
 mod config;
 mod lang_items;
 mod loader;
-mod priority_queue;
 mod sbi;
 mod sync;
 mod syscall;
@@ -39,5 +38,5 @@ pub fn rust_main() -> ! {
     trap::enable_timer_interrupt();
     timer::set_next_trigger();
     task::run_first_task();
-    panic!("Unreachable in rust_main!");
+    unreachable!("rust_main");
 }

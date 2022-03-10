@@ -1,6 +1,5 @@
 mod context;
 
-use crate::syscall::syscall;
 use crate::task::{exit_current_and_run_next, suspend_current_and_run_next};
 use crate::timer::set_next_trigger;
 use riscv::register::{
@@ -28,12 +27,11 @@ pub fn enable_timer_interrupt() {
 
 #[no_mangle]
 pub fn trap_handler(cx: &mut TrapContext) -> &mut TrapContext {
-    let scause = scause::read();
+    let scause = scause::read().cause();
     let stval = stval::read();
-    match scause.cause() {
+    match scause {
         Trap::Exception(Exception::UserEnvCall) => {
-            cx.sepc += 4;
-            cx.x[10] = syscall(cx.x[17], [cx.x[10], cx.x[11], cx.x[12]]) as usize;
+            cx.ecall();
         }
         Trap::Exception(Exception::StoreFault) | Trap::Exception(Exception::StorePageFault) => {
             println!("[kernel] PageFault in application, bad addr = {:#x}, bad instruction = {:#x}, core dumped.", stval, cx.sepc);
@@ -48,11 +46,7 @@ pub fn trap_handler(cx: &mut TrapContext) -> &mut TrapContext {
             suspend_current_and_run_next();
         }
         _ => {
-            panic!(
-                "Unsupported trap {:?}, stval = {:#x}!",
-                scause.cause(),
-                stval
-            );
+            panic!("Unsupported trap {scause:?}, stval = {stval:#x}!");
         }
     }
     cx

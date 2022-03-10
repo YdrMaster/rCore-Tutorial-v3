@@ -29,7 +29,7 @@ impl<T: Ord, const N: usize> PriorityQueue<T, N> {
         }
 
         self.val[self.len] = MaybeUninit::new(t);
-        // 下沉算法
+        // 从底部上浮
         let mut i = self.len;
         while i > 0 {
             // 父节点的序号
@@ -55,7 +55,7 @@ impl<T: Ord, const N: usize> PriorityQueue<T, N> {
         self.val.swap(0, self.len);
 
         let n = self.len;
-        // 上浮算法
+        // 从顶部下沉
         let mut i = 0;
         loop {
             // 较大子节点的序号
