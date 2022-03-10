@@ -78,17 +78,28 @@ impl TaskManager {
     }
 
     fn run_next_task(&self) {
-        if let Some(next) = self.find_next_task() {
+        let current_task_cx_ptr = {
             let mut inner = self.inner.exclusive_access();
             let current = inner.current_task;
-            inner.tasks[next].task_status = TaskStatus::Running;
-            inner.current_task = next;
-            let current_task_cx_ptr = &mut inner.tasks[current].task_cx as *mut TaskContext;
-            let next_task_cx_ptr = &inner.tasks[next].task_cx as *const TaskContext;
-            drop(inner);
-            // before this, we should drop local variables that must be dropped manually
-            unsafe {
-                __switch(next_task_cx_ptr, current_task_cx_ptr);
+            let context = unsafe { inner.tasks.get_unchecked_mut(current) };
+            if context.task_status == TaskStatus::Exited {
+                core::ptr::null_mut()
+            } else {
+                &mut inner.tasks[current].task_cx as *mut TaskContext
+            }
+        };
+
+        if let Some(next) = self.find_next_task() {
+            let next_task_cx_ptr = {
+                let mut inner = self.inner.exclusive_access();
+                inner.tasks[next].task_status = TaskStatus::Running;
+                inner.current_task = next;
+                &inner.tasks[next].task_cx as *const _
+            };
+            if current_task_cx_ptr.is_null() {
+                unsafe { __init(next_task_cx_ptr) };
+            } else {
+                unsafe { __switch(next_task_cx_ptr, current_task_cx_ptr) };
             }
             // go back to user mode
         } else {
