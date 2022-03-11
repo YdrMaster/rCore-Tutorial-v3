@@ -96,12 +96,14 @@ impl TaskManager {
                 inner.current_task = next;
                 &inner.tasks[next].task_cx as *const _
             };
+
             if current_task_cx_ptr.is_null() {
                 unsafe { __init(next_task_cx_ptr) };
+                unreachable!();
             } else {
                 unsafe { __switch(next_task_cx_ptr, current_task_cx_ptr) };
+                // go back to user mode
             }
-            // go back to user mode
         } else {
             panic!("All applications completed!");
         }
