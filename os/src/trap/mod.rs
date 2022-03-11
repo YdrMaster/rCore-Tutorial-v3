@@ -1,6 +1,6 @@
 mod context;
 
-use crate::task::{exit_current_and_run_next, suspend_current_and_run_next};
+use crate::task::{exit_current_and_run_next, run_next_task};
 use crate::timer::set_next_trigger;
 use riscv::register::{
     mtvec::TrapMode,
@@ -43,7 +43,7 @@ pub fn trap_handler(cx: &mut TrapContext) -> &mut TrapContext {
         }
         Trap::Interrupt(Interrupt::SupervisorTimer) => {
             set_next_trigger();
-            suspend_current_and_run_next();
+            run_next_task();
         }
         _ => {
             panic!("Unsupported trap {scause:?}, stval = {stval:#x}!");

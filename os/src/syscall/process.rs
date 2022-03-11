@@ -1,4 +1,4 @@
-use crate::task::{exit_current_and_run_next, suspend_current_and_run_next};
+use crate::task::{exit_current_and_run_next, run_next_task, set_priority};
 use crate::timer::get_time_us;
 
 #[repr(C)]
@@ -15,13 +15,13 @@ pub fn sys_exit(exit_code: i32) -> ! {
 }
 
 pub fn sys_yield() -> isize {
-    suspend_current_and_run_next();
+    run_next_task();
     0
 }
 
 pub fn sys_setpriority(prio: isize) -> isize {
     if prio >= 2 {
-        // TODO
+        set_priority(prio);
         prio
     } else {
         -1

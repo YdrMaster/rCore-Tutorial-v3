@@ -37,6 +37,6 @@ pub fn rust_main() -> ! {
     loader::load_apps();
     trap::enable_timer_interrupt();
     timer::set_next_trigger();
-    task::run_first_task();
+    task::run_next_task();
     unreachable!("rust_main");
 }
