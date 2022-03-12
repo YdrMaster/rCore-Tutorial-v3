@@ -22,7 +22,6 @@ impl TrapContext {
 
     pub fn ecall(&mut self) {
         self.sepc += 4;
-        self.x[10] =
-            crate::syscall::syscall(self.x[17], [self.x[10], self.x[11], self.x[12]]) as usize;
+        self.x[10] = crate::syscall::syscall(self.x[17], [self.x[10], self.x[11], self.x[12]]) as _;
     }
 }

@@ -14,7 +14,7 @@ pub enum TaskStatus {
     Exited,
 }
 
-pub const BIG_STRIDE: usize = 200 as _;
+pub const BIG_STRIDE: usize = isize::MAX as _;
 
 #[derive(PartialEq, Eq, Clone, Copy, Debug)]
 pub struct TaskStride {
