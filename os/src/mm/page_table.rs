@@ -25,7 +25,7 @@ pub struct PageTableEntry {
 impl PageTableEntry {
     pub fn new(ppn: PhysPageNum, flags: PTEFlags) -> Self {
         PageTableEntry {
-            bits: ppn.0 << 10 | flags.bits as usize,
+            bits: usize::from(ppn) << 10 | flags.bits as usize,
         }
     }
     pub fn empty() -> Self {
@@ -124,7 +124,7 @@ impl PageTable {
         self.find_pte(vpn).map(|pte| pte.clone())
     }
     pub fn token(&self) -> usize {
-        8usize << 60 | self.root_ppn.0
+        8usize << 60 | usize::from(self.root_ppn)
     }
 }
 

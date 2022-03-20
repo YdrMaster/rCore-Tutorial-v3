@@ -6,19 +6,27 @@ const PA_WIDTH_SV39: usize = 56;
 const VA_WIDTH_SV39: usize = 39;
 const PPN_WIDTH_SV39: usize = PA_WIDTH_SV39 - PAGE_SIZE_BITS;
 const VPN_WIDTH_SV39: usize = VA_WIDTH_SV39 - PAGE_SIZE_BITS;
+const PA_MASK_SV39: usize = (1 << PA_WIDTH_SV39) - 1;
+const PPN_MASK_SV39: usize = (1 << PPN_WIDTH_SV39) - 1;
+const VA_MASK_SV39: usize = (1 << VA_WIDTH_SV39) - 1;
+const VPN_MASK_SV39: usize = (1 << VPN_WIDTH_SV39) - 1;
 
 /// Definitions
+#[repr(transparent)]
 #[derive(Copy, Clone, Ord, PartialOrd, Eq, PartialEq)]
-pub struct PhysAddr(pub usize);
+pub struct PhysAddr(usize);
 
+#[repr(transparent)]
 #[derive(Copy, Clone, Ord, PartialOrd, Eq, PartialEq)]
-pub struct VirtAddr(pub usize);
+pub struct VirtAddr(usize);
 
+#[repr(transparent)]
 #[derive(Copy, Clone, Ord, PartialOrd, Eq, PartialEq)]
-pub struct PhysPageNum(pub usize);
+pub struct PhysPageNum(usize);
 
+#[repr(transparent)]
 #[derive(Copy, Clone, Ord, PartialOrd, Eq, PartialEq)]
-pub struct VirtPageNum(pub usize);
+pub struct VirtPageNum(usize);
 
 /// Debugging
 
@@ -27,16 +35,19 @@ impl Debug for VirtAddr {
         f.write_fmt(format_args!("VA:{:#x}", self.0))
     }
 }
+
 impl Debug for VirtPageNum {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         f.write_fmt(format_args!("VPN:{:#x}", self.0))
     }
 }
+
 impl Debug for PhysAddr {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         f.write_fmt(format_args!("PA:{:#x}", self.0))
     }
 }
+
 impl Debug for PhysPageNum {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         f.write_fmt(format_args!("PPN:{:#x}", self.0))
@@ -49,22 +60,22 @@ impl Debug for PhysPageNum {
 
 impl From<usize> for PhysAddr {
     fn from(v: usize) -> Self {
-        Self(v & ((1 << PA_WIDTH_SV39) - 1))
+        Self(v & PA_MASK_SV39)
     }
 }
 impl From<usize> for PhysPageNum {
     fn from(v: usize) -> Self {
-        Self(v & ((1 << PPN_WIDTH_SV39) - 1))
+        Self(v & PPN_MASK_SV39)
     }
 }
 impl From<usize> for VirtAddr {
     fn from(v: usize) -> Self {
-        Self(v & ((1 << VA_WIDTH_SV39) - 1))
+        Self(v & VA_MASK_SV39)
     }
 }
 impl From<usize> for VirtPageNum {
     fn from(v: usize) -> Self {
-        Self(v & ((1 << VPN_WIDTH_SV39) - 1))
+        Self(v & VPN_MASK_SV39)
     }
 }
 impl From<PhysAddr> for usize {
@@ -152,17 +163,18 @@ impl VirtPageNum {
 }
 
 impl PhysPageNum {
+    /// 页首地址转为任意类型指针
+    fn as_ptr_mut<T>(&self) -> *mut T {
+        PhysAddr::from(*self).0 as *mut _
+    }
     pub fn get_pte_array(&self) -> &'static mut [PageTableEntry] {
-        let pa: PhysAddr = self.clone().into();
-        unsafe { core::slice::from_raw_parts_mut(pa.0 as *mut PageTableEntry, 512) }
+        unsafe { core::slice::from_raw_parts_mut(self.as_ptr_mut(), 512) }
     }
     pub fn get_bytes_array(&self) -> &'static mut [u8] {
-        let pa: PhysAddr = self.clone().into();
-        unsafe { core::slice::from_raw_parts_mut(pa.0 as *mut u8, 4096) }
+        unsafe { core::slice::from_raw_parts_mut(self.as_ptr_mut(), 4096) }
     }
     pub fn get_mut<T>(&self) -> &'static mut T {
-        let pa: PhysAddr = self.clone().into();
-        unsafe { (pa.0 as *mut T).as_mut().unwrap() }
+        unsafe { &mut *self.as_ptr_mut() }
     }
 }
 

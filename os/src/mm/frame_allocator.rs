@@ -22,7 +22,7 @@ impl FrameTracker {
 
 impl Debug for FrameTracker {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        f.write_fmt(format_args!("FrameTracker:PPN={:#x}", self.ppn.0))
+        f.write_fmt(format_args!("FrameTracker:PPN={:#x?}", self.ppn))
     }
 }
 
@@ -46,8 +46,8 @@ pub struct StackFrameAllocator {
 
 impl StackFrameAllocator {
     pub fn init(&mut self, l: PhysPageNum, r: PhysPageNum) {
-        self.current = l.0;
-        self.end = r.0;
+        self.current = l.into();
+        self.end = r.into();
     }
 }
 impl FrameAllocator for StackFrameAllocator {
@@ -69,7 +69,7 @@ impl FrameAllocator for StackFrameAllocator {
         }
     }
     fn dealloc(&mut self, ppn: PhysPageNum) {
-        let ppn = ppn.0;
+        let ppn = ppn.into();
         // validity check
         if ppn >= self.current || self.recycled.iter().find(|&v| *v == ppn).is_some() {
             panic!("Frame ppn={:#x} has not been allocated!", ppn);
