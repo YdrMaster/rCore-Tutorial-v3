@@ -1,7 +1,6 @@
 use super::{PhysAddr, PhysPageNum};
-use crate::config::MEMORY_END;
-use crate::sync::UPSafeCell;
-use alloc::vec::Vec;
+use crate::{config::MEMORY_END, sync::UPSafeCell};
+use alloc::{collections::BinaryHeap, vec::Vec};
 use core::fmt::{self, Debug, Formatter};
 use lazy_static::*;
 
@@ -11,11 +10,7 @@ pub struct FrameTracker {
 
 impl FrameTracker {
     pub fn new(ppn: PhysPageNum) -> Self {
-        // page cleaning
-        let bytes_array = ppn.get_bytes_array();
-        for i in bytes_array {
-            *i = 0;
-        }
+        ppn.get_bytes_array().fill(0);
         Self { ppn }
     }
 }
@@ -38,26 +33,18 @@ trait FrameAllocator {
     fn dealloc(&mut self, ppn: PhysPageNum);
 }
 
+#[derive(Default)]
 pub struct StackFrameAllocator {
     current: usize,
     end: usize,
-    recycled: Vec<usize>,
+    recycled: BinaryHeap<usize>,
 }
 
-impl StackFrameAllocator {
-    pub fn init(&mut self, l: PhysPageNum, r: PhysPageNum) {
-        self.current = l.into();
-        self.end = r.into();
-    }
-}
 impl FrameAllocator for StackFrameAllocator {
     fn new() -> Self {
-        Self {
-            current: 0,
-            end: 0,
-            recycled: Vec::new(),
-        }
+        Self::default()
     }
+
     fn alloc(&mut self) -> Option<PhysPageNum> {
         if let Some(ppn) = self.recycled.pop() {
             Some(ppn.into())
@@ -68,14 +55,23 @@ impl FrameAllocator for StackFrameAllocator {
             Some((self.current - 1).into())
         }
     }
+
     fn dealloc(&mut self, ppn: PhysPageNum) {
-        let ppn = ppn.into();
-        // validity check
-        if ppn >= self.current || self.recycled.iter().find(|&v| *v == ppn).is_some() {
+        let ppn: usize = ppn.into();
+        if ppn == self.current - 1 {
+            self.current = ppn;
+            while let Some(ppn) = self.recycled.peek() {
+                if *ppn == self.current - 1 {
+                    self.current = self.recycled.pop().unwrap();
+                } else {
+                    break;
+                }
+            }
+        } else if ppn < self.current {
+            self.recycled.push(ppn);
+        } else {
             panic!("Frame ppn={:#x} has not been allocated!", ppn);
         }
-        // recycle
-        self.recycled.push(ppn);
     }
 }
 
@@ -90,10 +86,10 @@ pub fn init_frame_allocator() {
     extern "C" {
         fn ekernel();
     }
-    FRAME_ALLOCATOR.exclusive_access().init(
-        PhysAddr::from(ekernel as usize).ceil(),
-        PhysAddr::from(MEMORY_END).floor(),
-    );
+    let mut allocator = FRAME_ALLOCATOR.exclusive_access();
+    allocator.current = PhysAddr::from(ekernel as usize).page().into();
+    allocator.end = PhysAddr::from(MEMORY_END).page().into();
+    allocator.end += 1;
 }
 
 pub fn frame_alloc() -> Option<FrameTracker> {

@@ -66,7 +66,7 @@ impl MemorySet {
     fn map_trampoline(&mut self) {
         self.page_table.map(
             VirtAddr::from(TRAMPOLINE).into(),
-            PhysAddr::from(strampoline as usize).into(),
+            PhysAddr::from(strampoline as usize).page(),
             PTEFlags::R | PTEFlags::X,
         );
     }
