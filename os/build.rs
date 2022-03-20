@@ -49,7 +49,9 @@ _num_app:
     .align 3
 app_{0}_start:
     .incbin "{2}{1}.elf"
-app_{0}_end:"#, idx, app, TARGET_PATH)?;
+app_{0}_end:"#,
+            idx, app, TARGET_PATH
+        )?;
     }
     Ok(())
 }
