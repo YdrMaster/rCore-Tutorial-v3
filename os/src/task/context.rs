@@ -8,13 +8,12 @@ pub struct TaskContext {
 }
 
 impl TaskContext {
-    pub fn zero_init() -> Self {
-        Self {
-            ra: 0,
-            sp: 0,
-            s: [0; 12],
-        }
-    }
+    pub const ZERO: Self = Self {
+        ra: 0,
+        sp: 0,
+        s: [0; 12],
+    };
+
     pub fn goto_trap_return(kstack_ptr: usize) -> Self {
         Self {
             ra: trap_return as usize,

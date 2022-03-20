@@ -7,7 +7,7 @@ use crate::sync::UPSafeCell;
 use crate::trap::TrapContext;
 use alloc::vec::Vec;
 use lazy_static::*;
-use switch::__switch;
+use switch::{__init, __switch};
 use task::{TaskControlBlock, TaskStatus};
 
 pub use context::TaskContext;
@@ -45,17 +45,14 @@ lazy_static! {
 
 impl TaskManager {
     fn run_first_task(&self) -> ! {
-        let mut inner = self.inner.exclusive_access();
-        let next_task = &mut inner.tasks[0];
-        next_task.task_status = TaskStatus::Running;
-        let next_task_cx_ptr = &next_task.task_cx as *const TaskContext;
-        drop(inner);
-        let mut _unused = TaskContext::zero_init();
-        // before this, we should drop local variables that must be dropped manually
-        unsafe {
-            __switch(&mut _unused as *mut _, next_task_cx_ptr);
-        }
-        panic!("unreachable in run_first_task!");
+        let next_task_cx_ptr = {
+            let mut inner = self.inner.exclusive_access();
+            let task0 = unsafe { inner.tasks.get_unchecked_mut(0) };
+            task0.task_status = TaskStatus::Running;
+            &task0.task_cx as _
+        };
+        unsafe { __init(next_task_cx_ptr) };
+        unreachable!("run_first_task");
     }
 
     fn mark_current_suspended(&self) {
@@ -99,7 +96,7 @@ impl TaskManager {
             drop(inner);
             // before this, we should drop local variables that must be dropped manually
             unsafe {
-                __switch(current_task_cx_ptr, next_task_cx_ptr);
+                __switch(next_task_cx_ptr, current_task_cx_ptr);
             }
             // go back to user mode
         } else {
@@ -112,26 +109,14 @@ pub fn run_first_task() {
     TASK_MANAGER.run_first_task();
 }
 
-fn run_next_task() {
+pub fn suspend_current_and_run_next() {
+    TASK_MANAGER.mark_current_suspended();
     TASK_MANAGER.run_next_task();
 }
 
-fn mark_current_suspended() {
-    TASK_MANAGER.mark_current_suspended();
-}
-
-fn mark_current_exited() {
-    TASK_MANAGER.mark_current_exited();
-}
-
-pub fn suspend_current_and_run_next() {
-    mark_current_suspended();
-    run_next_task();
-}
-
 pub fn exit_current_and_run_next() {
-    mark_current_exited();
-    run_next_task();
+    TASK_MANAGER.mark_current_exited();
+    TASK_MANAGER.run_next_task();
 }
 
 pub fn current_user_token() -> usize {
