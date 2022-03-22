@@ -15,7 +15,7 @@ pub fn init_heap() {
     unsafe {
         HEAP_ALLOCATOR
             .lock()
-            .init(HEAP_SPACE.as_ptr() as usize, KERNEL_HEAP_SIZE);
+            .init(HEAP_SPACE.as_ptr() as _, KERNEL_HEAP_SIZE);
     }
 }
 

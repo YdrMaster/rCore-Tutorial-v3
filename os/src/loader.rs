@@ -12,6 +12,6 @@ pub fn get_app_data(app_id: usize) -> &'static [u8] {
     unsafe {
         debug_assert!(app_id < *PTR);
         let ptr = PTR.add(1 + app_id);
-        unsafe { core::slice::from_raw_parts(*ptr as _, *ptr.add(1) - *ptr) }
+        core::slice::from_raw_parts(*ptr as _, *ptr.add(1) - *ptr)
     }
 }
