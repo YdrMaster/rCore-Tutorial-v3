@@ -200,10 +200,10 @@ impl PageTable {
 }
 
 /// 将一个用 `ptr` 和 `len` 表示的用户空间内存块转换到内核空间
-pub fn translated_byte_buffer(token: usize, ptr: *const u8, len: usize) -> Vec<&'static mut [u8]> {
+pub fn translated_byte_buffer(token: usize, buf: &[u8]) -> Vec<&'static mut [u8]> {
     let page_table = PageTable::from_token(token);
-    let mut start = ptr as usize;
-    let end = start + len;
+    let mut start = buf.as_ptr() as usize;
+    let end = start + buf.len();
     let mut v = Vec::new();
     while start < end {
         let start_va = VirtAddr::from(start);
