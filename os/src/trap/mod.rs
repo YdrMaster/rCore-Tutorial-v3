@@ -1,9 +1,6 @@
 use crate::{
     config::{TRAMPOLINE, TRAP_CONTEXT},
-    task::{
-        current_trap_cx, current_user_token, exit_current_and_run_next,
-        suspend_current_and_run_next,
-    },
+    task::{current_trap_cx, current_user_token, exit_current_and_run_next, run_next_task},
     timer::set_next_trigger,
 };
 use riscv::register::{
@@ -60,7 +57,7 @@ pub fn trap_handler() -> ! {
         }
         Trap::Interrupt(Interrupt::SupervisorTimer) => {
             set_next_trigger();
-            suspend_current_and_run_next();
+            run_next_task();
         }
         _ => panic!("Unsupported trap {:?}, stval = {stval:#x}!", scause.cause()),
     }
