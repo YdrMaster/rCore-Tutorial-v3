@@ -239,17 +239,15 @@ impl MapArea {
         }
     }
     pub fn map_one(&mut self, page_table: &mut PageTable, vpn: VirtPageNum) {
-        let ppn: PhysPageNum;
-        match self.map_type {
-            MapType::Identical => {
-                ppn = PhysPageNum::from(usize::from(vpn));
-            }
+        let ppn = match self.map_type {
+            MapType::Identical => PhysPageNum::from(usize::from(vpn)),
             MapType::Framed => {
                 let frame = frame_alloc().unwrap();
-                ppn = frame.ppn;
+                let ppn = frame.ppn();
                 self.data_frames.insert(vpn, frame);
+                ppn
             }
-        }
+        };
         let pte_flags = PTEFlags::from_bits(self.map_perm.bits).unwrap();
         page_table.map(vpn, ppn, pte_flags);
     }

@@ -1,16 +1,20 @@
-mod context;
-
-use crate::config::{TRAMPOLINE, TRAP_CONTEXT};
-use crate::syscall::syscall;
-use crate::task::{
-    current_trap_cx, current_user_token, exit_current_and_run_next, suspend_current_and_run_next,
+use crate::{
+    config::{TRAMPOLINE, TRAP_CONTEXT},
+    task::{
+        current_trap_cx, current_user_token, exit_current_and_run_next,
+        suspend_current_and_run_next,
+    },
+    timer::set_next_trigger,
 };
-use crate::timer::set_next_trigger;
 use riscv::register::{
     mtvec::TrapMode,
     scause::{self, Exception, Interrupt, Trap},
     sie, stval, stvec,
 };
+
+mod context;
+
+pub use context::TrapContext;
 
 core::arch::global_asm!(include_str!("trap.S"));
 
@@ -20,13 +24,13 @@ pub fn init() {
 
 fn set_kernel_trap_entry() {
     unsafe {
-        stvec::write(trap_from_kernel as usize, TrapMode::Direct);
+        stvec::write(trap_from_kernel as _, TrapMode::Direct);
     }
 }
 
 fn set_user_trap_entry() {
     unsafe {
-        stvec::write(TRAMPOLINE as usize, TrapMode::Direct);
+        stvec::write(TRAMPOLINE as _, TrapMode::Direct);
     }
 }
 
@@ -58,13 +62,7 @@ pub fn trap_handler() -> ! {
             set_next_trigger();
             suspend_current_and_run_next();
         }
-        _ => {
-            panic!(
-                "Unsupported trap {:?}, stval = {:#x}!",
-                scause.cause(),
-                stval
-            );
-        }
+        _ => panic!("Unsupported trap {:?}, stval = {stval:#x}!", scause.cause()),
     }
     trap_return();
 }
@@ -95,5 +93,3 @@ pub fn trap_return() -> ! {
 pub fn trap_from_kernel() -> ! {
     panic!("a trap from kernel!");
 }
-
-pub use context::TrapContext;

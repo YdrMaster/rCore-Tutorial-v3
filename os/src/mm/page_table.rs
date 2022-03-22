@@ -61,7 +61,7 @@ impl PageTable {
     pub fn new() -> Self {
         let frame = frame_alloc().unwrap();
         PageTable {
-            root_ppn: frame.ppn,
+            root_ppn: frame.ppn(),
             frames: vec![frame],
         }
     }
@@ -84,7 +84,7 @@ impl PageTable {
             }
             if !pte.is_valid() {
                 let frame = frame_alloc().unwrap();
-                *pte = PageTableEntry::new(frame.ppn, PTEFlags::V);
+                *pte = PageTableEntry::new(frame.ppn(), PTEFlags::V);
                 self.frames.push(frame);
             }
             ppn = pte.ppn();

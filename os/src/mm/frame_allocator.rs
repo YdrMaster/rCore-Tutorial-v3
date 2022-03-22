@@ -4,26 +4,25 @@ use alloc::{collections::BinaryHeap, vec::Vec};
 use core::fmt::{self, Debug, Formatter};
 use lazy_static::*;
 
-pub struct FrameTracker {
-    pub ppn: PhysPageNum,
-}
+/// 物理页帧（RAII）
+pub struct FrameTracker(PhysPageNum);
 
 impl FrameTracker {
-    pub fn new(ppn: PhysPageNum) -> Self {
-        ppn.get_bytes_array().fill(0);
-        Self { ppn }
+    /// 获取 `FrameTracker` 管理的物理页帧
+    pub fn ppn(&self) -> PhysPageNum {
+        self.0
     }
 }
 
 impl Debug for FrameTracker {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        f.write_fmt(format_args!("FrameTracker:PPN={:#x?}", self.ppn))
+        f.write_fmt(format_args!("FrameTracker:PPN={:#x?}", self.0))
     }
 }
 
 impl Drop for FrameTracker {
     fn drop(&mut self) {
-        frame_dealloc(self.ppn);
+        frame_dealloc(self.0);
     }
 }
 
@@ -75,13 +74,12 @@ impl FrameAllocator for StackFrameAllocator {
     }
 }
 
-type FrameAllocatorImpl = StackFrameAllocator;
-
 lazy_static! {
-    pub static ref FRAME_ALLOCATOR: UPSafeCell<FrameAllocatorImpl> =
-        unsafe { UPSafeCell::new(FrameAllocatorImpl::new()) };
+    pub static ref FRAME_ALLOCATOR: UPSafeCell<StackFrameAllocator> =
+        unsafe { UPSafeCell::new(StackFrameAllocator::new()) };
 }
 
+/// 初始化物理页帧分配器
 pub fn init_frame_allocator() {
     extern "C" {
         fn ekernel();
@@ -92,13 +90,15 @@ pub fn init_frame_allocator() {
     allocator.end += 1;
 }
 
+/// 申请物理页帧
 pub fn frame_alloc() -> Option<FrameTracker> {
-    FRAME_ALLOCATOR
-        .exclusive_access()
-        .alloc()
-        .map(|ppn| FrameTracker::new(ppn))
+    FRAME_ALLOCATOR.exclusive_access().alloc().map(|ppn| {
+        ppn.get_bytes_array().fill(0);
+        FrameTracker(ppn)
+    })
 }
 
+/// 释放物理页帧
 fn frame_dealloc(ppn: PhysPageNum) {
     FRAME_ALLOCATOR.exclusive_access().dealloc(ppn);
 }
