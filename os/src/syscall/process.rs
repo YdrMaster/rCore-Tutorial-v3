@@ -1,4 +1,4 @@
-use crate::task::{exit_current_and_run_next, run_next_task};
+use crate::task::{exit_current_and_run_next, mmap, munmap, run_next_task};
 use crate::timer::get_time_us;
 
 #[repr(C)]
@@ -31,9 +31,13 @@ pub fn sys_get_time(_ts: *mut TimeVal, _tz: usize) -> isize {
 }
 
 pub fn sys_mmap(start: usize, len: usize, port: usize) -> isize {
-    0
+    mmap(start, len, port)
 }
 
 pub fn sys_munmap(start: usize, len: usize) -> isize {
-    0
+    if munmap(start, len) >= 0 {
+        0
+    } else {
+        -1
+    }
 }

@@ -173,6 +173,7 @@ where
     l: T,
     r: T,
 }
+
 impl<T> SimpleRange<T>
 where
     T: StepByOne + Copy + PartialEq + PartialOrd + Debug,
@@ -181,13 +182,24 @@ where
         assert!(start <= end, "start {:?} > end {:?}!", start, end);
         Self { l: start, r: end }
     }
+
     pub fn get_start(&self) -> T {
         self.l
     }
+
     pub fn get_end(&self) -> T {
         self.r
     }
+
+    pub fn intersect(&self, others: &Self) -> bool {
+        self.l < others.r && self.r > others.l
+    }
+
+    pub fn contians(&self, value: &T) -> bool {
+        &self.l <= value || value < &self.r
+    }
 }
+
 impl<T> IntoIterator for SimpleRange<T>
 where
     T: StepByOne + Copy + PartialEq + PartialOrd + Debug,
@@ -198,6 +210,7 @@ where
         SimpleRangeIterator::new(self.l, self.r)
     }
 }
+
 pub struct SimpleRangeIterator<T>
 where
     T: StepByOne + Copy + PartialEq + PartialOrd + Debug,
@@ -205,6 +218,7 @@ where
     current: T,
     end: T,
 }
+
 impl<T> SimpleRangeIterator<T>
 where
     T: StepByOne + Copy + PartialEq + PartialOrd + Debug,
@@ -213,6 +227,7 @@ where
         Self { current: l, end: r }
     }
 }
+
 impl<T> Iterator for SimpleRangeIterator<T>
 where
     T: StepByOne + Copy + PartialEq + PartialOrd + Debug,
@@ -228,4 +243,17 @@ where
         }
     }
 }
+
 pub type VPNRange = SimpleRange<VirtPageNum>;
+
+impl VPNRange {
+    pub fn len(&self) -> usize {
+        usize::from(self.get_end()) - usize::from(self.get_start())
+    }
+}
+
+impl Debug for VPNRange {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        write!(f, "[{:?}, {:?})", self.l, self.r)
+    }
+}

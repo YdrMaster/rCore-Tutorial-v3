@@ -4,20 +4,38 @@ use crate::mm::{MapPermission, MemorySet, PhysPageNum, VirtAddr, KERNEL_SPACE};
 use crate::trap::{trap_handler, TrapContext};
 
 pub struct TaskControlBlock {
-    pub task_running: bool,
-    pub task_cx: TaskContext,
-    pub memory_set: MemorySet,
-    pub trap_cx_ppn: PhysPageNum,
-    pub base_size: usize,
+    pub running: bool,
+    context: TaskContext,
+    memory_set: MemorySet,
+    trap_cx_ppn: PhysPageNum,
+    base_size: usize,
 }
 
 impl TaskControlBlock {
-    pub fn get_trap_cx(&self) -> &'static mut TrapContext {
+    pub fn context_ptr(&self) -> *const TaskContext {
+        &self.context as _
+    }
+
+    pub fn context_ptr_mut(&mut self) -> *mut TaskContext {
+        &mut self.context as _
+    }
+
+    pub fn trap_context_mut(&self) -> &'static mut TrapContext {
         self.trap_cx_ppn.get_mut()
     }
-    pub fn get_user_token(&self) -> usize {
+
+    pub fn user_token(&self) -> usize {
         self.memory_set.token()
     }
+
+    pub fn mmap(&mut self, start: VirtAddr, end: VirtAddr, permission: MapPermission) -> isize {
+        self.memory_set.mmap(start, end, permission)
+    }
+
+    pub fn munmap(&mut self, start: VirtAddr, end: VirtAddr) -> isize {
+        self.memory_set.munmap(start, end)
+    }
+
     pub fn new(elf_data: &[u8], app_id: usize) -> Self {
         // memory_set with elf program headers/trampoline/trap context/user stack
         let (memory_set, user_sp, entry_point) = MemorySet::from_elf(elf_data);
@@ -33,15 +51,14 @@ impl TaskControlBlock {
             MapPermission::R | MapPermission::W,
         );
         let task_control_block = Self {
-            task_running: false,
-            task_cx: TaskContext::goto_trap_return(kernel_stack_top),
+            running: false,
+            context: TaskContext::goto_trap_return(kernel_stack_top),
             memory_set,
             trap_cx_ppn,
             base_size: user_sp,
         };
         // prepare TrapContext in user space
-        let trap_cx = task_control_block.get_trap_cx();
-        *trap_cx = TrapContext::app_init_context(
+        *task_control_block.trap_context_mut() = TrapContext::app_init_context(
             entry_point,
             user_sp,
             KERNEL_SPACE.exclusive_access().token(),

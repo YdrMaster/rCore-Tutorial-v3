@@ -31,19 +31,23 @@ lazy_static! {
 pub struct MemorySet {
     page_table: PageTable,
     areas: Vec<MapArea>,
+    mmap_blocks: BTreeMap<VirtPageNum, FrameTracker>,
 }
 
 impl MemorySet {
     pub fn new_bare() -> Self {
         Self {
             page_table: PageTable::new(),
-            areas: Vec::new(),
+            areas: Default::default(),
+            mmap_blocks: Default::default(),
         }
     }
+
     pub fn token(&self) -> usize {
         self.page_table.token()
     }
-    /// Assume that no conflicts.
+
+    /// 插入一块需要映射的内存
     pub fn insert_framed_area(
         &mut self,
         start_va: VirtAddr,
@@ -55,6 +59,43 @@ impl MemorySet {
             None,
         );
     }
+
+    pub fn mmap(
+        &mut self,
+        start_va: VirtAddr,
+        end_va: VirtAddr,
+        permission: MapPermission,
+    ) -> isize {
+        let range = VPNRange::new(start_va.floor(), end_va.ceil());
+        for vpn in range {
+            use alloc::collections::btree_map::Entry::*;
+            if let Vacant(entry) = self.mmap_blocks.entry(vpn) {
+                let frame = frame_alloc().unwrap();
+                self.page_table.map(
+                    vpn,
+                    frame.ppn(),
+                    PTEFlags::from_bits(permission.bits).unwrap(),
+                );
+                entry.insert(frame);
+            } else {
+                return -1;
+            }
+        }
+        0
+    }
+
+    pub fn munmap(&mut self, start_va: VirtAddr, end_va: VirtAddr) -> isize {
+        let range = VPNRange::new(start_va.floor(), end_va.ceil());
+        for vpn in range {
+            if self.mmap_blocks.remove(&vpn).is_some() {
+                self.page_table.unmap(vpn);
+            } else {
+                return -1;
+            }
+        }
+        0
+    }
+
     fn push(&mut self, mut map_area: MapArea, data: Option<&[u8]>) {
         map_area.map(&mut self.page_table);
         if let Some(data) = data {
@@ -62,6 +103,7 @@ impl MemorySet {
         }
         self.areas.push(map_area);
     }
+
     /// Mention that trampoline is not collected by areas.
     fn map_trampoline(&mut self) {
         self.page_table.map(
@@ -70,6 +112,7 @@ impl MemorySet {
             PTEFlags::R | PTEFlags::X,
         );
     }
+
     /// Without kernel stacks.
     pub fn new_kernel() -> Self {
         let mut memory_set = Self::new_bare();
@@ -135,6 +178,7 @@ impl MemorySet {
         );
         memory_set
     }
+
     /// Include sections in elf and trampoline and TrapContext and user stack,
     /// also returns user_sp and entry point.
     pub fn from_elf(elf_data: &[u8]) -> (Self, usize, usize) {
@@ -203,6 +247,7 @@ impl MemorySet {
             elf.header.pt2.entry_point() as usize,
         )
     }
+
     pub fn activate(&self) {
         let satp = self.page_table.token();
         unsafe {
@@ -210,6 +255,7 @@ impl MemorySet {
             core::arch::asm!("sfence.vma");
         }
     }
+
     pub fn translate(&self, vpn: VirtPageNum) -> Option<PageTableEntry> {
         self.page_table.translate(vpn)
     }
@@ -269,7 +315,6 @@ impl MapArea {
         }
     }
 
-    #[allow(unused)]
     pub fn unmap(&mut self, page_table: &mut PageTable) {
         for vpn in self.vpn_range {
             self.unmap_one(page_table, vpn);

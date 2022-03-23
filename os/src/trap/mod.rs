@@ -59,6 +59,10 @@ pub fn trap_handler() -> ! {
             set_next_trigger();
             run_next_task();
         }
+        Trap::Exception(e) => {
+            println!("[kernel] {:?} in application, core dumped.", e);
+            exit_current_and_run_next();
+        }
         _ => panic!("Unsupported trap {:?}, stval = {stval:#x}!", scause.cause()),
     }
     trap_return();
