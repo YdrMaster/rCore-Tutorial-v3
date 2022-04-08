@@ -190,14 +190,6 @@ where
     pub fn get_end(&self) -> T {
         self.r
     }
-
-    pub fn intersect(&self, others: &Self) -> bool {
-        self.l < others.r && self.r > others.l
-    }
-
-    pub fn contians(&self, value: &T) -> bool {
-        &self.l <= value || value < &self.r
-    }
 }
 
 impl<T> IntoIterator for SimpleRange<T>
@@ -245,12 +237,6 @@ where
 }
 
 pub type VPNRange = SimpleRange<VirtPageNum>;
-
-impl VPNRange {
-    pub fn len(&self) -> usize {
-        usize::from(self.get_end()) - usize::from(self.get_start())
-    }
-}
 
 impl Debug for VPNRange {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {

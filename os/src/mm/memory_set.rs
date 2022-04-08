@@ -35,7 +35,7 @@ pub struct MemorySet {
 }
 
 impl MemorySet {
-    pub fn new_bare() -> Self {
+    fn new_bare() -> Self {
         Self {
             page_table: PageTable::new(),
             areas: Default::default(),
@@ -114,7 +114,7 @@ impl MemorySet {
     }
 
     /// Without kernel stacks.
-    pub fn new_kernel() -> Self {
+    fn new_kernel() -> Self {
         let mut memory_set = Self::new_bare();
         // map trampoline
         memory_set.map_trampoline();
@@ -261,7 +261,7 @@ impl MemorySet {
     }
 }
 
-pub struct MapArea {
+struct MapArea {
     vpn_range: VPNRange,
     data_frames: BTreeMap<VirtPageNum, FrameTracker>,
     map_type: MapType,
@@ -309,13 +309,13 @@ impl MapArea {
         page_table.unmap(vpn);
     }
 
-    pub fn map(&mut self, page_table: &mut PageTable) {
+    fn map(&mut self, page_table: &mut PageTable) {
         for vpn in self.vpn_range {
             self.map_one(page_table, vpn);
         }
     }
 
-    pub fn unmap(&mut self, page_table: &mut PageTable) {
+    fn unmap(&mut self, page_table: &mut PageTable) {
         for vpn in self.vpn_range {
             self.unmap_one(page_table, vpn);
         }
@@ -323,7 +323,7 @@ impl MapArea {
 
     /// data: start-aligned but maybe with shorter length
     /// assume that all frames were cleared before
-    pub fn copy_data(&mut self, page_table: &mut PageTable, data: &[u8]) {
+    fn copy_data(&mut self, page_table: &mut PageTable, data: &[u8]) {
         assert_eq!(self.map_type, MapType::Framed);
         let mut start: usize = 0;
         let mut current_vpn = self.vpn_range.get_start();

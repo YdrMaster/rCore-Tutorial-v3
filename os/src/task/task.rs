@@ -8,7 +8,6 @@ pub struct TaskControlBlock {
     context: TaskContext,
     memory_set: MemorySet,
     trap_cx_ppn: PhysPageNum,
-    base_size: usize,
 }
 
 impl TaskControlBlock {
@@ -55,7 +54,6 @@ impl TaskControlBlock {
             context: TaskContext::goto_trap_return(kernel_stack_top),
             memory_set,
             trap_cx_ppn,
-            base_size: user_sp,
         };
         // prepare TrapContext in user space
         *task_control_block.trap_context_mut() = TrapContext::app_init_context(
